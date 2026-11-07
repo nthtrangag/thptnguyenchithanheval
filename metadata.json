@@ -1,0 +1,6 @@
+{
+  "name": "DGVC-THPTNguyenChiThanh",
+  "description": "Hệ thống quản lý, tự đánh giá và xếp loại chuẩn nghề nghiệp giáo viên theo quy trình 4 bước: Admin cấu hình, Giáo viên tự đánh giá, Tổ trưởng thẩm định, Ban Giám hiệu phê duyệt.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
