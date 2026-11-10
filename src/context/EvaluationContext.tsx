@@ -141,8 +141,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const parsed = JSON.parse(saved);
       if (
         !Array.isArray(parsed) || 
-        !parsed.some((u: User) => u.id === 'u-nv-van-phong-5' && (u.title || '').includes('Y tế')) ||
-        !parsed.some((u: User) => u.id === 'u-nv-van-phong-3' && (u.title || '').includes('Thiết bị, thí nghiệm'))
+        !parsed.some((u: User) => u.email.toLowerCase() === 'nthtrangag@gmail.com')
       ) {
         return INITIAL_USERS;
       }
