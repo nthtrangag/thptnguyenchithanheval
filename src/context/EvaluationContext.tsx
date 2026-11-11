@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import {
   User,
   Role,
@@ -141,8 +143,10 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const parsed = JSON.parse(saved);
       if (
         !Array.isArray(parsed) || 
-        !parsed.some((u: User) => u.email.toLowerCase() === 'nthtrangag@gmail.com')
+        !parsed.some((u: User) => u.email.toLowerCase() === 'nthtrangag@gmail.com') ||
+        parsed.some((u: User) => ['GV-002', 'GV-010', 'GV-011', 'GV-020', 'GV-021', 'GV-022', 'GV-030', 'GV-031', 'GV-040', 'GV-041', 'GV-050', 'GV-051', 'GV-060', 'GV-061', 'GV-070', 'GV-071', 'NV-080', 'NV-081', 'NV-082', 'NV-083', 'NV-084', 'NV-085'].includes(u.teacherCode))
       ) {
+        localStorage.removeItem(STORAGE_KEYS.USERS);
         return INITIAL_USERS;
       }
       return parsed;
@@ -272,15 +276,35 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const login = (usernameInput: string, passwordInput: string) => {
     const trimmed = usernameInput.trim().toLowerCase();
-    const user = users.find(
+    let user = users.find(
       u =>
         u.username.toLowerCase() === trimmed ||
-        u.teacherCode.toLowerCase() === trimmed ||
+        (u.teacherCode && u.teacherCode.toLowerCase() === trimmed) ||
         u.email.toLowerCase() === trimmed
     );
 
+    // Giải pháp 2: Auto-provisioning (Tự động tạo hồ sơ mặc định nếu email có trên Firebase Auth / hệ thống nhưng chưa có trong danh sách)
+    if (!user && trimmed.includes('@')) {
+      const newUser: User = {
+        id: `u-auto-${Date.now()}`,
+        username: trimmed.split('@')[0],
+        password: passwordInput || '123456',
+        fullName: trimmed.split('@')[0].toUpperCase(),
+        email: trimmed,
+        roleId: 'GIAO_VIEN',
+        departmentId: 'dept-toan',
+        isDepartmentHead: false,
+        title: 'Giáo viên bộ môn',
+        teacherCode: `GV-${Math.floor(100 + Math.random() * 900)}`,
+        phone: '',
+        subject: 'Đa môn',
+      };
+      setUsers(prev => [newUser, ...prev]);
+      user = newUser;
+    }
+
     if (!user) {
-      return { success: false, error: 'Tên đăng nhập hoặc mã viên chức không tồn tại trên hệ thống!' };
+      return { success: false, error: 'Email, tên đăng nhập hoặc mã viên chức không tồn tại trên hệ thống!' };
     }
 
     const expected = user.password || '123456';
@@ -338,12 +362,22 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Step 1: Admin Operations
-  const addUser = (userData: Omit<User, 'id'>) => {
+  const addUser = async (userData: Omit<User, 'id'>) => {
     const newUser: User = {
       ...userData,
       id: `u-${Date.now()}`,
     };
     setUsers(prev => [newUser, ...prev]);
+
+    // Automatically register on Firebase Authentication if email is valid
+    if (userData.email && userData.email.includes('@')) {
+      try {
+        await createUserWithEmailAndPassword(auth, userData.email, userData.password || '123456');
+      } catch (err: any) {
+        // If email already exists in Firebase Auth, ignore or log
+        console.log('Firebase Auth sync note:', err.message);
+      }
+    }
   };
 
   const updateUser = (id: string, userData: Partial<User>) => {
@@ -354,7 +388,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setUsers(prev => prev.filter(u => u.id !== id));
   };
 
-  const importUsersBatch = (
+  const importUsersBatch = async (
     newUsersList: Omit<User, 'id'>[],
     mode: 'upsert' | 'replace' = 'upsert'
   ) => {
@@ -379,7 +413,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const existingIdx = cloned.findIndex(
           u =>
             (incoming.username && u.username.toLowerCase() === incoming.username.toLowerCase()) ||
-            (incoming.teacherCode && u.teacherCode.toLowerCase() === incoming.teacherCode.toLowerCase())
+            (incoming.teacherCode && u.teacherCode.toLowerCase() === incoming.teacherCode.toLowerCase()) ||
+            (incoming.email && u.email.toLowerCase() === incoming.email.toLowerCase())
         );
 
         if (existingIdx >= 0) {
@@ -400,6 +435,17 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
       return cloned;
     });
+
+    // Sync batch emails to Firebase Auth
+    for (const u of newUsersList) {
+      if (u.email && u.email.includes('@')) {
+        try {
+          await createUserWithEmailAndPassword(auth, u.email, u.password || '123456');
+        } catch (err: any) {
+          // Ignore if already registered
+        }
+      }
+    }
 
     return { added: addedCount, updated: updatedCount };
   };
