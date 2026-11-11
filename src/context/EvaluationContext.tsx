@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import {
   User,
@@ -139,30 +139,28 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
 
-  // Load users from Firestore on mount
+  // Load and subscribe to users from Firestore in real-time
   useEffect(() => {
-    const fetchFirestoreUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        if (!querySnapshot.empty) {
-          const firestoreUsers: User[] = [];
-          querySnapshot.forEach(docSnap => {
-            firestoreUsers.push(docSnap.data() as User);
-          });
-          if (firestoreUsers.length > 0) {
-            setUsers(firestoreUsers);
-          }
-        } else {
-          // If Firestore collection is empty, seed initial users
-          for (const u of INITIAL_USERS) {
-            await setDoc(doc(db, 'users', u.id), u);
-          }
+    const unsubscribe = onSnapshot(collection(db, 'users'), (querySnapshot) => {
+      if (!querySnapshot.empty) {
+        const firestoreUsers: User[] = [];
+        querySnapshot.forEach(docSnap => {
+          firestoreUsers.push(docSnap.data() as User);
+        });
+        if (firestoreUsers.length > 0) {
+          setUsers(firestoreUsers);
         }
-      } catch (err) {
-        console.error('Error fetching users from Firestore:', err);
+      } else {
+        // If Firestore collection is empty, seed initial users
+        INITIAL_USERS.forEach(async (u) => {
+          await setDoc(doc(db, 'users', u.id), u);
+        });
       }
-    };
-    fetchFirestoreUsers();
+    }, (err) => {
+      console.error('Error listening to users from Firestore:', err);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const [periods, setPeriods] = useState<EvaluationPeriod[]>(() => {
