@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { collection, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import {
   User,
   Role,
@@ -136,24 +137,33 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const roles = INITIAL_ROLES;
   const departments = INITIAL_DEPARTMENTS;
 
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (!saved) return INITIAL_USERS;
-    try {
-      const parsed = JSON.parse(saved);
-      if (
-        !Array.isArray(parsed) || 
-        !parsed.some((u: User) => u.email.toLowerCase() === 'nthtrangag@gmail.com') ||
-        parsed.some((u: User) => ['GV-002', 'GV-010', 'GV-011', 'GV-020', 'GV-021', 'GV-022', 'GV-030', 'GV-031', 'GV-040', 'GV-041', 'GV-050', 'GV-051', 'GV-060', 'GV-061', 'GV-070', 'GV-071', 'NV-080', 'NV-081', 'NV-082', 'NV-083', 'NV-084', 'NV-085'].includes(u.teacherCode))
-      ) {
-        localStorage.removeItem(STORAGE_KEYS.USERS);
-        return INITIAL_USERS;
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+
+  // Load users from Firestore on mount
+  useEffect(() => {
+    const fetchFirestoreUsers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        if (!querySnapshot.empty) {
+          const firestoreUsers: User[] = [];
+          querySnapshot.forEach(docSnap => {
+            firestoreUsers.push(docSnap.data() as User);
+          });
+          if (firestoreUsers.length > 0) {
+            setUsers(firestoreUsers);
+          }
+        } else {
+          // If Firestore collection is empty, seed initial users
+          for (const u of INITIAL_USERS) {
+            await setDoc(doc(db, 'users', u.id), u);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching users from Firestore:', err);
       }
-      return parsed;
-    } catch {
-      return INITIAL_USERS;
-    }
-  });
+    };
+    fetchFirestoreUsers();
+  }, []);
 
   const [periods, setPeriods] = useState<EvaluationPeriod[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.PERIODS);
@@ -367,6 +377,14 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...userData,
       id: `u-${Date.now()}`,
     };
+    
+    // Save to Firestore
+    try {
+      await setDoc(doc(db, 'users', newUser.id), newUser);
+    } catch (err) {
+      console.error('Error saving user to Firestore:', err);
+    }
+
     setUsers(prev => [newUser, ...prev]);
 
     // Automatically register on Firebase Authentication if email is valid
@@ -374,18 +392,37 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         await createUserWithEmailAndPassword(auth, userData.email, userData.password || '123456');
       } catch (err: any) {
-        // If email already exists in Firebase Auth, ignore or log
         console.log('Firebase Auth sync note:', err.message);
       }
     }
   };
 
-  const updateUser = (id: string, userData: Partial<User>) => {
-    setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...userData } : u)));
+  const updateUser = async (id: string, userData: Partial<User>) => {
+    let updatedUser: User | undefined;
+    setUsers(prev => prev.map(u => {
+      if (u.id === id) {
+        updatedUser = { ...u, ...userData };
+        return updatedUser;
+      }
+      return u;
+    }));
+
+    if (updatedUser) {
+      try {
+        await setDoc(doc(db, 'users', id), updatedUser, { merge: true });
+      } catch (err) {
+        console.error('Error updating user in Firestore:', err);
+      }
+    }
   };
 
-  const deleteUser = (id: string) => {
+  const deleteUser = async (id: string) => {
     setUsers(prev => prev.filter(u => u.id !== id));
+    try {
+      await deleteDoc(doc(db, 'users', id));
+    } catch (err) {
+      console.error('Error deleting user from Firestore:', err);
+    }
   };
 
   const importUsersBatch = async (
@@ -394,6 +431,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   ) => {
     let addedCount = 0;
     let updatedCount = 0;
+
+    let finalUsers: User[] = [];
 
     setUsers(prevUsers => {
       if (mode === 'replace') {
@@ -405,7 +444,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }));
         const hasAdmin = formatted.some(u => u.roleId === 'ADMIN');
         addedCount = formatted.length;
-        return hasAdmin ? formatted : [...adminUsers, ...formatted];
+        finalUsers = hasAdmin ? formatted : [...adminUsers, ...formatted];
+        return finalUsers;
       }
 
       const cloned = [...prevUsers];
@@ -433,8 +473,18 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           addedCount++;
         }
       });
+      finalUsers = cloned;
       return cloned;
     });
+
+    // Save all to Firestore
+    try {
+      for (const u of finalUsers) {
+        await setDoc(doc(db, 'users', u.id), u);
+      }
+    } catch (err) {
+      console.error('Error saving batch users to Firestore:', err);
+    }
 
     // Sync batch emails to Firebase Auth
     for (const u of newUsersList) {

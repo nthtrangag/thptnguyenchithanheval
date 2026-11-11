@@ -3,10 +3,10 @@
   "appId": "1:777200455860:web:a1a2dacb0eb027d969c7e1",
   "apiKey": "AIzaSyACzL2brclABpHf-ggQXCwsugneogPC4Q4",
   "authDomain": "dgvcthptnguyenchithanh.firebaseapp.com",
-  "firestoreDatabaseId": "(default)",
+  "firestoreDatabaseId": "ai-studio-thptnguynchthanh-1db52774-584e-4536-9521-a59f31efb0fe",
   "storageBucket": "dgvcthptnguyenchithanh.firebasestorage.app",
   "messagingSenderId": "777200455860",
   "measurementId": "G-W1304EB87B",
-  "oAuthClientId": "",
+  "oAuthClientId": "777200455860-ue6k8ncl52f6r7dfpitp6jjajbeg4nc5.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
