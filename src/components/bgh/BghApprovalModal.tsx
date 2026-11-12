@@ -10,7 +10,8 @@ import {
   Sparkles, 
   Check, 
   Building2,
-  Stamp
+  Stamp,
+  Trash2
 } from 'lucide-react';
 import { Evaluation, User, Criterion, RankingLevel } from '../../types';
 import { calculateTotalScore, determineRanking, RANKING_DEFINITIONS, isDepartmentLeaderOrDeputy, isAccountingStaff, isOfficeHead, isClericalStaff, isEquipmentStaff, isMedicalStaff } from '../../utils/evaluationRules';
@@ -34,6 +35,7 @@ export const BghApprovalModal: React.FC<BghApprovalModalProps> = ({
     getUserCriteria,
     evaluationDetails,
     submitBghApproval,
+    resetEvaluationByBgh,
     getUserDepartment,
     getUserById,
   } = useEvaluation();
@@ -123,6 +125,18 @@ export const BghApprovalModal: React.FC<BghApprovalModalProps> = ({
 
     submitBghApproval(evaluation.id, updates, ranking, generalComment);
     setIsSubmitting(false);
+    onClose();
+  };
+
+  const handleResetEvaluation = () => {
+    if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ PHIẾU ĐÁNH GIÁ (cả điểm tự chấm, điểm tổ thẩm định và điểm BGH) của giáo viên ${teacher.fullName} và trả về trạng thái ban đầu chưa đánh giá không?`)) {
+      return;
+    }
+
+    const reason = prompt('Nhập lý do xóa/hủy phiếu để giáo viên lập lại từ đầu:', 'Ban Giám Hiệu kiểm tra phát hiện sai sót, yêu cầu hủy phiếu và lập lại từ đầu.');
+    if (reason === null) return; // Cancelled
+
+    resetEvaluationByBgh(evaluation.id, reason);
     onClose();
   };
 
@@ -588,22 +602,33 @@ export const BghApprovalModal: React.FC<BghApprovalModalProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-3">
+          <div className="pt-2 flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-medium"
+              onClick={handleResetEvaluation}
+              className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-all"
             >
-              Hủy
+              <Trash2 className="w-4 h-4" />
+              <span>Xóa Phiếu &amp; Lập Lại Từ Đầu</span>
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-black text-xs rounded-xl shadow-md shadow-rose-200 transition-all hover:scale-[1.01]"
-            >
-              <Stamp className="w-4 h-4" />
-              <span>Ký &amp; Phê Duyệt Hồ Sơ (APPROVED)</span>
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-medium"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 px-6 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-black text-xs rounded-xl shadow-md shadow-rose-200 transition-all hover:scale-[1.01]"
+              >
+                <Stamp className="w-4 h-4" />
+                <span>Ký &amp; Phê Duyệt Hồ Sơ (APPROVED)</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

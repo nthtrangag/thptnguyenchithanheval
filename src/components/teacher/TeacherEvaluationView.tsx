@@ -72,18 +72,23 @@ export const TeacherEvaluationView: React.FC = () => {
     e => e.userId === currentUser.id && e.periodId === selectedPeriodId
   );
 
-  const [activeEval, setActiveEval] = useState(() => {
-    return existingEval || initEvaluationForTeacher(currentUser.id, selectedPeriodId);
-  });
+  const activeEval = existingEval || {
+    id: `eval-temp-${currentUser.id}`,
+    periodId: selectedPeriodId,
+    userId: currentUser.id,
+    departmentId: currentUser.departmentId,
+    status: 'DRAFT' as const,
+    selfTotalScore: 0,
+    groupTotalScore: null,
+    bghTotalScore: null,
+    updatedAt: new Date().toISOString(),
+  };
 
   useEffect(() => {
-    if (existingEval) {
-      setActiveEval(existingEval);
-    } else {
-      const created = initEvaluationForTeacher(currentUser.id, selectedPeriodId);
-      setActiveEval(created);
+    if (!existingEval) {
+      initEvaluationForTeacher(currentUser.id, selectedPeriodId);
     }
-  }, [existingEval, currentUser.id, selectedPeriodId]);
+  }, [currentUser.id, selectedPeriodId, existingEval]);
 
   // Form states: Map criterionId -> { score, evidence, note }
   const currentEvalDetails = evaluationDetails.filter(d => d.evaluationId === activeEval.id);

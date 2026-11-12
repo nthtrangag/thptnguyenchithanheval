@@ -63,7 +63,7 @@ interface EvaluationContextType {
   importUsersBatch: (
     newUsersList: Omit<User, 'id'>[],
     mode?: 'upsert' | 'replace'
-  ) => { added: number; updated: number };
+  ) => Promise<{ added: number; updated: number }>;
   addPeriod: (periodData: Omit<EvaluationPeriod, 'id'>) => void;
   updatePeriod: (id: string, periodData: Partial<EvaluationPeriod>) => void;
   deletePeriod: (id: string) => void;
@@ -100,6 +100,9 @@ interface EvaluationContextType {
   ) => void;
   // Revert submission / Return dossier to teacher (SUBMITTED / GROUP_REVIEWED -> DRAFT)
   revertEvaluationSubmission: (evaluationId: string, reason?: string) => void;
+
+  // BGH reset evaluation completely back to un-evaluated state
+  resetEvaluationByBgh: (evaluationId: string, reason?: string) => void;
 
   // Step 4: BGH Final Approval (GROUP_REVIEWED -> APPROVED)
   submitBghApproval: (
@@ -870,25 +873,28 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Revert / Cancel submission: return to teacher as DRAFT (Xóa nộp hồ sơ để GV thực hiện lại)
-  const revertEvaluationSubmission = (evaluationId: string, reason?: string) => {
+  const revertEvaluationSubmission = async (evaluationId: string, reason?: string) => {
     const defaultReason = reason?.trim() || 'Tổ trưởng chuyên môn đã hoàn trả hồ sơ để giáo viên bổ sung minh chứng và rà soát lại kết quả.';
 
-    // Clear group scores and preserve prior group notes as feedback for teacher
+    let affectedDetails: EvaluationDetail[] = [];
     setEvaluationDetails(prev =>
       prev.map(d => {
         if (d.evaluationId !== evaluationId) return d;
-        return {
+        const updated = {
           ...d,
           groupScore: null,
           groupNote: d.groupNote ? `(Góp ý trước đó của tổ: ${d.groupNote})` : undefined,
         };
+        affectedDetails.push(updated);
+        return updated;
       })
     );
 
+    let updatedEval: Evaluation | undefined;
     setEvaluations(prev =>
       prev.map(e => {
         if (e.id !== evaluationId) return e;
-        return {
+        updatedEval = {
           ...e,
           status: 'DRAFT',
           selfSubmittedAt: undefined,
@@ -902,8 +908,76 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           returnedBy: currentUser.fullName || currentUser.username,
           updatedAt: new Date().toISOString(),
         };
+        return updatedEval;
       })
     );
+
+    if (updatedEval) {
+      await setDoc(doc(db, 'evaluations', evaluationId), updatedEval, { merge: true });
+    }
+    for (const d of affectedDetails) {
+      await setDoc(doc(db, 'evaluationDetails', d.id), d, { merge: true });
+    }
+  };
+
+  // BGH completely reset/delete evaluation scores and return back to un-evaluated state
+  const resetEvaluationByBgh = async (evaluationId: string, reason?: string) => {
+    const defaultReason = reason?.trim() || 'Ban Giám Hiệu đã phát hiện sai sót và quyết định hủy bỏ phiếu đánh giá để giáo viên thực hiện lập phiếu mới từ đầu.';
+
+    let affectedDetails: EvaluationDetail[] = [];
+    setEvaluationDetails(prev =>
+      prev.map(d => {
+        if (d.evaluationId !== evaluationId) return d;
+        const resetDetail = {
+          ...d,
+          selfScore: null,
+          groupScore: null,
+          bghScore: null,
+          evidenceText: '',
+          teacherNote: undefined,
+          groupNote: undefined,
+          bghNote: undefined,
+        };
+        affectedDetails.push(resetDetail);
+        return resetDetail;
+      })
+    );
+
+    let updatedEval: Evaluation | undefined;
+    setEvaluations(prev =>
+      prev.map(e => {
+        if (e.id !== evaluationId) return e;
+        updatedEval = {
+          ...e,
+          status: 'DRAFT',
+          selfTotalScore: 0,
+          selfRanking: undefined,
+          selfSubmittedAt: undefined,
+          groupTotalScore: null,
+          groupRanking: undefined,
+          groupReviewedAt: undefined,
+          groupReviewerId: undefined,
+          generalGroupComment: undefined,
+          bghTotalScore: null,
+          bghRanking: undefined,
+          bghApprovedAt: undefined,
+          bghReviewerId: undefined,
+          generalBghComment: undefined,
+          returnReason: defaultReason,
+          returnedAt: new Date().toISOString(),
+          returnedBy: `BGH (${currentUser.fullName || currentUser.username})`,
+          updatedAt: new Date().toISOString(),
+        };
+        return updatedEval;
+      })
+    );
+
+    if (updatedEval) {
+      await setDoc(doc(db, 'evaluations', evaluationId), updatedEval, { merge: true });
+    }
+    for (const d of affectedDetails) {
+      await setDoc(doc(db, 'evaluationDetails', d.id), d, { merge: true });
+    }
   };
 
   // Step 4: BGH Final Approval (GROUP_REVIEWED -> APPROVED)
@@ -1048,6 +1122,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         submitTeacherEvaluation,
         submitGroupReview,
         revertEvaluationSubmission,
+        resetEvaluationByBgh,
         submitBghApproval,
         addEvidenceFile,
         removeEvidenceFile,

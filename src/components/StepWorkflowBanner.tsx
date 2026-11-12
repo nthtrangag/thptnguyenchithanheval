@@ -68,7 +68,7 @@ export const StepWorkflowBanner: React.FC<StepWorkflowBannerProps> = ({
       roleName: 'Giáo viên & Nhân viên',
       desc: 'Tự cho điểm (Thang 100đ theo từng vị trí), đính kèm minh chứng bắt buộc và nộp hồ sơ.',
       demoUserId: 'u-gv-toan-1',
-      isActive: isAdmin ? (adminActiveStep === 2) : (currentRole.id === 'GIAO_VIEN' || currentRole.id === 'NHAN_VIEN'),
+      isActive: isAdmin ? (adminActiveStep === 2) : ((currentRole.id as string) === 'GIAO_VIEN' || (currentRole.id as string) === 'NHAN_VIEN'),
       icon: UserCheck,
       // Color theme: XANH NGỌC LỤC BẢO / EMERALD TƯƠI SÁNG
       theme: {
@@ -94,7 +94,7 @@ export const StepWorkflowBanner: React.FC<StepWorkflowBannerProps> = ({
       roleName: 'Tổ trưởng chuyên môn',
       desc: 'Kiểm tra hồ sơ minh chứng, chấm điểm thẩm định (group_score) hoặc trả về chỉnh sửa.',
       demoUserId: 'u-tt-toan',
-      isActive: isAdmin ? (adminActiveStep === 3) : (currentRole.id === 'TO_TRUONG'),
+      isActive: isAdmin ? (adminActiveStep === 3) : ((currentRole.id as string) === 'TO_TRUONG'),
       icon: Users,
       // Color theme: VÀNG CAM HỔ PHÁCH / AMBER NỔI BẬT
       theme: {

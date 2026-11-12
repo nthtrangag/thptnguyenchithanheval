@@ -60,7 +60,7 @@ export const StepWorkflowSidebar: React.FC<StepWorkflowSidebarProps> = ({
       roleName: 'Giáo viên & Nhân viên',
       desc: 'Tự cho điểm (Thang 100đ theo từng vị trí), đính kèm minh chứng và nộp hồ sơ.',
       demoUserId: 'u-gv-toan-1',
-      isActive: isAdmin ? (adminActiveStep === 2) : (currentRole.id === 'GIAO_VIEN' || currentRole.id === 'NHAN_VIEN'),
+      isActive: isAdmin ? (adminActiveStep === 2) : ((currentRole.id as string) === 'GIAO_VIEN' || (currentRole.id as string) === 'NHAN_VIEN'),
       icon: UserCheck,
       theme: {
         baseBg: 'bg-emerald-50/90',
@@ -84,7 +84,7 @@ export const StepWorkflowSidebar: React.FC<StepWorkflowSidebarProps> = ({
       roleName: 'Tổ trưởng chuyên môn',
       desc: 'Kiểm tra hồ sơ minh chứng, chấm điểm thẩm định (group_score) hoặc trả về chỉnh sửa.',
       demoUserId: 'u-tt-toan',
-      isActive: isAdmin ? (adminActiveStep === 3) : (currentRole.id === 'TO_TRUONG'),
+      isActive: isAdmin ? (adminActiveStep === 3) : ((currentRole.id as string) === 'TO_TRUONG'),
       icon: Users,
       theme: {
         baseBg: 'bg-amber-50/90',

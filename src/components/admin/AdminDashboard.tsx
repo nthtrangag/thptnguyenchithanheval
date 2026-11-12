@@ -53,6 +53,7 @@ export const AdminDashboard: React.FC = () => {
     deleteUser,
     addPeriod,
     updatePeriod,
+    deletePeriod,
     addCriterion,
     updateCriterion,
     deleteCriterion,
@@ -102,7 +103,7 @@ export const AdminDashboard: React.FC = () => {
     semester: 'Học kỳ I',
     startDate: '2026-10-01',
     endDate: '2026-11-30',
-    status: 'UPCOMING' as const,
+    status: 'UPCOMING' as 'UPCOMING' | 'ACTIVE' | 'CLOSED',
     description: '',
   });
 
@@ -1096,6 +1097,7 @@ export const AdminDashboard: React.FC = () => {
                           startDate: period.startDate,
                           endDate: period.endDate,
                           description: period.description,
+                          status: period.status || 'UPCOMING',
                         });
                         setShowAddPeriodModal(true);
                       }}

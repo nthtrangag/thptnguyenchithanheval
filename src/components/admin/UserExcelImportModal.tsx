@@ -114,7 +114,7 @@ export const UserExcelImportModal: React.FC<UserExcelImportModalProps> = ({
     setParsedRows(liveUsers);
   };
 
-  const handleExecuteImport = () => {
+  const handleExecuteImport = async () => {
     const validRows = parsedRows.filter(r => r.status !== 'error');
     if (validRows.length === 0) {
       setParseError('Không có dòng dữ liệu hợp lệ nào để nạp!');
@@ -135,7 +135,7 @@ export const UserExcelImportModal: React.FC<UserExcelImportModalProps> = ({
       subject: r.subject,
     }));
 
-    const result = importUsersBatch(payload, importMode);
+    const result = await importUsersBatch(payload, importMode);
     setImportSuccessMessage(
       `Đã nạp thành công! Thêm mới: ${result.added} tài khoản, Cập nhật: ${result.updated} tài khoản.`
     );
