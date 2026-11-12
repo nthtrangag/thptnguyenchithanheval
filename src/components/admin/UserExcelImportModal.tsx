@@ -80,55 +80,38 @@ export const UserExcelImportModal: React.FC<UserExcelImportModalProps> = ({
     }
   };
 
-  // Load sample demo rows immediately without needing a local file
+  // Load current live users from context immediately
   const handleLoadDemoData = () => {
     setParseError('');
     setImportSuccessMessage('');
-    setFileName('Mau_Du_Lieu_Vi_Du_THPT_NguyenChiThanh.xlsx');
-    setFileSize('18.4 KB');
+    setFileName('Danh_Sach_Vien_Chuc_Hien_Tai.xlsx');
+    setFileSize(`${(users.length * 0.5).toFixed(1)} KB`);
 
-    const demoUsers: ParsedUserRow[] = [
-      {
-        rowNumber: 2,
-        teacherCode: 'GV-001',
-        fullName: 'Trần Kiên Cường',
-        username: 'hieutruong',
-        password: '123456',
-        email: 'c3nguyenchithanh-cuong@angiang.edu.vn',
-        roleId: 'BGH',
-        roleName: 'Ban Giám Hiệu',
-        departmentId: 'dept-bgh',
-        departmentName: 'Ban Giám Hiệu Nhà Trường',
-        title: 'Hiệu trưởng',
-        isDepartmentHead: true,
-        subject: 'Quản lý giáo dục',
-        phone: '0399.259.997',
-        status: 'valid',
-        statusMessage: 'Sẵn sàng thêm mới',
+    const liveUsers: ParsedUserRow[] = users.map((u, idx) => {
+      const dept = departments.find(d => d.id === u.departmentId);
+      const role = roles.find(r => r.id === u.roleId);
+      return {
+        rowNumber: idx + 2,
+        teacherCode: u.teacherCode || `GV-0${idx + 10}`,
+        fullName: u.fullName,
+        username: u.username,
+        password: u.password || '123456',
+        email: u.email,
+        roleId: u.roleId,
+        roleName: role?.name || u.roleId,
+        departmentId: u.departmentId,
+        departmentName: dept?.name || 'Chưa phân tổ',
+        title: u.title,
+        isDepartmentHead: u.isDepartmentHead,
+        subject: u.subject || 'Chuyên môn',
+        phone: u.phone || '',
+        status: 'valid' as const,
+        statusMessage: 'Đang hoạt động trên hệ thống',
         raw: {},
-      },
-      {
-        rowNumber: 3,
-        teacherCode: 'QT-001',
-        fullName: 'Nguyễn Quản Trị',
-        username: 'admin',
-        password: '123456',
-        email: 'nthtrangag@gmail.com',
-        roleId: 'ADMIN',
-        roleName: 'Quản Trị Viên',
-        departmentId: 'dept-bgh',
-        departmentName: 'Ban Giám Hiệu Nhà Trường',
-        title: 'Quản trị viên hệ thống',
-        isDepartmentHead: false,
-        subject: 'Công nghệ thông tin',
-        phone: '0986.665.294',
-        status: 'valid',
-        statusMessage: 'Sẵn sàng thêm mới',
-        raw: {},
-      },
-    ];
+      };
+    });
 
-    setParsedRows(demoUsers);
+    setParsedRows(liveUsers);
   };
 
   const handleExecuteImport = () => {

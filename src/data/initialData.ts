@@ -165,6 +165,20 @@ export const INITIAL_USERS: User[] = [
     phone: '0912345678',
     subject: 'Toán học',
   },
+  {
+    id: 'u-bgh-2',
+    username: 'nu',
+    password: '123456',
+    fullName: 'Lê Thị Ngọc Nữ',
+    email: 'ngocnule4698@gmail.com',
+    roleId: 'BGH',
+    departmentId: 'dept-bgh',
+    isDepartmentHead: false,
+    title: 'PHT chuyên môn',
+    teacherCode: 'GV-002',
+    phone: '0972644698',
+    subject: 'Tiếng Anh',
+  },
 ];
 
 export const INITIAL_PERIODS: EvaluationPeriod[] = [
