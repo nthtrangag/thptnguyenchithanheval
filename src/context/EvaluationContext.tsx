@@ -713,22 +713,25 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Step 2: Teacher Save Draft
-  const saveTeacherEvaluationDraft = (
+  const saveTeacherEvaluationDraft = async (
     evaluationId: string,
     detailsUpdates: { criterionId: string; selfScore: number; evidenceText?: string; teacherNote?: string }[],
     generalComment?: string
   ) => {
+    let affectedDetails: EvaluationDetail[] = [];
     setEvaluationDetails(prev => {
       const updated = prev.map(d => {
         if (d.evaluationId !== evaluationId) return d;
         const match = detailsUpdates.find(u => u.criterionId === d.criterionId);
         if (match) {
-          return {
+          const updatedDetail = {
             ...d,
             selfScore: match.selfScore,
             evidenceText: match.evidenceText ?? d.evidenceText,
             teacherNote: match.teacherNote ?? d.teacherNote,
           };
+          affectedDetails.push(updatedDetail);
+          return updatedDetail;
         }
         return d;
       });
@@ -752,10 +755,11 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const total = calculateTotalScore(thisEvalDetails, 'selfScore');
     const ranking = determineRanking(thisEvalDetails, applicableCriteria, 'selfScore');
 
+    let updatedEval: Evaluation | undefined;
     setEvaluations(prev =>
       prev.map(e => {
         if (e.id !== evaluationId) return e;
-        return {
+        updatedEval = {
           ...e,
           status: 'DRAFT',
           selfTotalScore: total,
@@ -763,36 +767,45 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           generalTeacherComment: generalComment ?? e.generalTeacherComment,
           updatedAt: new Date().toISOString(),
         };
+        return updatedEval;
       })
     );
+
+    if (updatedEval) {
+      await setDoc(doc(db, 'evaluations', evaluationId), updatedEval, { merge: true });
+    }
+    for (const d of affectedDetails) {
+      await setDoc(doc(db, 'evaluationDetails', d.id), d, { merge: true });
+    }
   };
 
   // Step 2: Teacher Submit (DRAFT -> SUBMITTED)
-  const submitTeacherEvaluation = (
+  const submitTeacherEvaluation = async (
     evaluationId: string,
     detailsUpdates: { criterionId: string; selfScore: number; evidenceText?: string; teacherNote?: string }[],
     generalComment?: string
   ) => {
-    // 1. Update details
+    let affectedDetails: EvaluationDetail[] = [];
     let nextDetails: EvaluationDetail[] = [];
     setEvaluationDetails(prev => {
       nextDetails = prev.map(d => {
         if (d.evaluationId !== evaluationId) return d;
         const match = detailsUpdates.find(u => u.criterionId === d.criterionId);
         if (match) {
-          return {
+          const updated = {
             ...d,
             selfScore: match.selfScore,
             evidenceText: match.evidenceText ?? d.evidenceText,
             teacherNote: match.teacherNote ?? d.teacherNote,
           };
+          affectedDetails.push(updated);
+          return updated;
         }
         return d;
       });
       return nextDetails;
     });
 
-    // 2. Compute total score and rank
     const targetDetails = nextDetails.length > 0 
       ? nextDetails.filter(d => d.evaluationId === evaluationId)
       : evaluationDetails.filter(d => d.evaluationId === evaluationId);
@@ -804,10 +817,11 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const total = calculateTotalScore(targetDetails, 'selfScore');
     const ranking = determineRanking(targetDetails, applicableCriteria, 'selfScore');
 
+    let updatedEval: Evaluation | undefined;
     setEvaluations(prev =>
       prev.map(e => {
         if (e.id !== evaluationId) return e;
-        return {
+        updatedEval = {
           ...e,
           status: 'SUBMITTED',
           selfTotalScore: total,
@@ -816,28 +830,38 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           generalTeacherComment: generalComment ?? e.generalTeacherComment,
           updatedAt: new Date().toISOString(),
         };
+        return updatedEval;
       })
     );
+
+    if (updatedEval) {
+      await setDoc(doc(db, 'evaluations', evaluationId), updatedEval, { merge: true });
+    }
+    for (const d of affectedDetails) {
+      await setDoc(doc(db, 'evaluationDetails', d.id), d, { merge: true });
+    }
   };
 
-
   // Step 3: Group Head Review (SUBMITTED -> GROUP_REVIEWED)
-  const submitGroupReview = (
+  const submitGroupReview = async (
     evaluationId: string,
     detailsUpdates: { criterionId: string; groupScore: number; groupNote?: string }[],
     generalComment?: string
   ) => {
+    let affectedDetails: EvaluationDetail[] = [];
     let nextDetails: EvaluationDetail[] = [];
     setEvaluationDetails(prev => {
       nextDetails = prev.map(d => {
         if (d.evaluationId !== evaluationId) return d;
         const match = detailsUpdates.find(u => u.criterionId === d.criterionId);
         if (match) {
-          return {
+          const updated = {
             ...d,
             groupScore: match.groupScore,
             groupNote: match.groupNote ?? d.groupNote,
           };
+          affectedDetails.push(updated);
+          return updated;
         }
         return d;
       });
@@ -855,10 +879,11 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const groupTotal = calculateTotalScore(targetDetails, 'groupScore');
     const groupRanking = determineRanking(targetDetails, applicableCriteria, 'groupScore');
 
+    let updatedEval: Evaluation | undefined;
     setEvaluations(prev =>
       prev.map(e => {
         if (e.id !== evaluationId) return e;
-        return {
+        updatedEval = {
           ...e,
           status: 'GROUP_REVIEWED',
           groupTotalScore: groupTotal,
@@ -868,8 +893,16 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           generalGroupComment: generalComment ?? e.generalGroupComment,
           updatedAt: new Date().toISOString(),
         };
+        return updatedEval;
       })
     );
+
+    if (updatedEval) {
+      await setDoc(doc(db, 'evaluations', evaluationId), updatedEval, { merge: true });
+    }
+    for (const d of affectedDetails) {
+      await setDoc(doc(db, 'evaluationDetails', d.id), d, { merge: true });
+    }
   };
 
   // Revert / Cancel submission: return to teacher as DRAFT (Xóa nộp hồ sơ để GV thực hiện lại)

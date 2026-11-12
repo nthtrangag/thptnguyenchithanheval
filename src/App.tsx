@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { EvaluationProvider, useEvaluation } from './context/EvaluationContext';
 import { Header } from './components/Header';
-import { StepWorkflowSidebar } from './components/StepWorkflowSidebar';
+import { StepWorkflowBanner } from './components/StepWorkflowBanner';
 import { LoginModal } from './components/LoginModal';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { TeacherEvaluationView } from './components/teacher/TeacherEvaluationView';
@@ -31,11 +31,31 @@ const AppContent: React.FC = () => {
       {/* Top Header */}
       <Header onOpenLoginModal={() => setIsLoginModalOpen(true)} />
 
-      {/* Main Layout with Sidebar Workflow (Right or Left) and Content Area */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col lg:flex-row items-start gap-6">
+      {/* Horizontal 4-Step Workflow Banner */}
+      <StepWorkflowBanner
+        onSelectStep={(step) => {
+          if (currentRole.id === 'ADMIN') {
+            if (step === 1) setAdminActiveTab('dashboard');
+            if (step === 2) setAdminActiveTab('evaluation');
+            if (step === 3) setAdminActiveTab('department');
+            if (step === 4) setAdminActiveTab('bgh');
+          }
+        }}
+        adminActiveStep={
+          currentRole.id === 'ADMIN'
+            ? adminActiveTab === 'dashboard' ? 1
+              : adminActiveTab === 'evaluation' ? 2
+              : adminActiveTab === 'department' ? 3
+              : 4
+            : 4
+        }
+      />
+
+      {/* Main Layout with Content Area */}
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col items-start gap-6">
         
-        {/* Main Role-Based Content Area (Left/Center) */}
-        <main className="flex-1 w-full space-y-6 min-w-0">
+        {/* Main Role-Based Content Area */}
+        <main className="w-full space-y-6 min-w-0">
           {/* If user is ADMIN: Provide tabs to access ALL system functions */}
           {currentRole.id === 'ADMIN' && (
             <div className="bg-white rounded-2xl p-2.5 border-2 border-purple-300 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-md bg-gradient-to-r from-purple-50/70 via-indigo-50/50 to-white">
@@ -169,28 +189,6 @@ const AppContent: React.FC = () => {
             <BghDashboardView />
           )}
         </main>
-
-        {/* 4-Step Interactive Workflow Sidebar (Right Side) */}
-        {(currentRole.id === 'ADMIN' || currentRole.id === 'BGH') && (
-          <StepWorkflowSidebar
-            onSelectStep={(step) => {
-              if (currentRole.id === 'ADMIN') {
-                if (step === 1) setAdminActiveTab('dashboard');
-                if (step === 2) setAdminActiveTab('evaluation');
-                if (step === 3) setAdminActiveTab('department');
-                if (step === 4) setAdminActiveTab('bgh');
-              }
-            }}
-            adminActiveStep={
-              currentRole.id === 'ADMIN'
-                ? adminActiveTab === 'dashboard' ? 1
-                  : adminActiveTab === 'evaluation' ? 2
-                  : adminActiveTab === 'department' ? 3
-                  : 4
-                : 4
-            }
-          />
-        )}
       </div>
 
       {/* Footer */}

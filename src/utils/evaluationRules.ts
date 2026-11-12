@@ -317,22 +317,22 @@ export const STATUS_DEFINITIONS: Record<EvaluationStatus, { label: string; step:
     description: 'Giáo viên đang hoàn thiện hồ sơ tự đánh giá và tải minh chứng',
   },
   SUBMITTED: {
-    label: 'Đã gửi (Chờ Tổ trưởng thẩm định)',
+    label: 'Đã gửi',
     step: 2,
     color: 'bg-amber-100 text-amber-800 border-amber-300',
-    description: 'Giáo viên đã nộp bản tự đánh giá, đang chờ Tổ trưởng chấm điểm tổ',
+    description: 'Giáo viên đã nộp bản tự đánh giá, chờ Tổ trưởng thẩm định',
   },
   GROUP_REVIEWED: {
-    label: 'Chờ BGH duyệt',
+    label: 'Đang thẩm định',
     step: 3,
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-    description: 'Tổ chuyên môn đã cho điểm group_score, chờ Ban Giám hiệu quyết định',
+    color: 'bg-purple-100 text-purple-800 border-purple-300',
+    description: 'Tổ chuyên môn đang thẩm định hoặc đã thẩm định, chờ BGH phê duyệt',
   },
   APPROVED: {
-    label: 'Đã phê duyệt chính thức',
+    label: 'Đã phê duyệt',
     step: 4,
     color: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-    description: 'BGH đã xem xét toàn diện, cho điểm chính thức và xếp loại cuối cùng',
+    description: 'BGH đã phê duyệt chính thức và xếp loại cuối cùng',
   },
 };
 
@@ -343,10 +343,11 @@ export function calculateTotalScore(
   details: EvaluationDetail[],
   scoreKey: 'selfScore' | 'groupScore' | 'bghScore'
 ): number {
-  return details.reduce((sum, item) => {
+  const sum = details.reduce((acc, item) => {
     const val = item[scoreKey];
-    return sum + (typeof val === 'number' ? val : 0);
+    return acc + (typeof val === 'number' ? val : 0);
   }, 0);
+  return Math.round(sum * 10) / 10;
 }
 
 /**
