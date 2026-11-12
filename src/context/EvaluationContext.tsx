@@ -215,24 +215,40 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   });
 
-  const [evaluations, setEvaluations] = useState<Evaluation[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.EVALUATIONS);
-    return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
-  });
+  const [evaluations, setEvaluations] = useState<Evaluation[]>(INITIAL_EVALUATIONS);
+  const [evaluationDetails, setEvaluationDetails] = useState<EvaluationDetail[]>(INITIAL_EVALUATION_DETAILS);
 
-  const [evaluationDetails, setEvaluationDetails] = useState<EvaluationDetail[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DETAILS);
-    if (!saved) return INITIAL_EVALUATION_DETAILS;
-    try {
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed) || !parsed.some((d: EvaluationDetail) => d.criterionId === 'crit-tt-b4a')) {
-        return INITIAL_EVALUATION_DETAILS;
+  // Load and subscribe to evaluations from Firestore in real-time
+  useEffect(() => {
+    const unsubEvals = onSnapshot(collection(db, 'evaluations'), (snapshot) => {
+      if (!snapshot.empty) {
+        const evals: Evaluation[] = [];
+        snapshot.forEach(docSnap => evals.push(docSnap.data() as Evaluation));
+        if (evals.length > 0) setEvaluations(evals);
+      } else {
+        INITIAL_EVALUATIONS.forEach(async (e) => {
+          await setDoc(doc(db, 'evaluations', e.id), e);
+        });
       }
-      return parsed;
-    } catch {
-      return INITIAL_EVALUATION_DETAILS;
-    }
-  });
+    });
+
+    const unsubDetails = onSnapshot(collection(db, 'evaluationDetails'), (snapshot) => {
+      if (!snapshot.empty) {
+        const details: EvaluationDetail[] = [];
+        snapshot.forEach(docSnap => details.push(docSnap.data() as EvaluationDetail));
+        if (details.length > 0) setEvaluationDetails(details);
+      } else {
+        INITIAL_EVALUATION_DETAILS.forEach(async (d) => {
+          await setDoc(doc(db, 'evaluationDetails', d.id), d);
+        });
+      }
+    });
+
+    return () => {
+      unsubEvals();
+      unsubDetails();
+    };
+  }, []);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const saved = localStorage.getItem('edueval_is_auth_v233_p4');
